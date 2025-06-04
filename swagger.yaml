@@ -14,12 +14,13 @@ servers:
 tags:
   - name: Users
     description: User management API
+  - name: Authentication # <-- NEW: Authentication Tag
+    description: User authentication and authorization
 paths:
   /users:
     post:
       summary: Create a new user
-      tags:
-        - Users
+      tags: [Users]
       requestBody:
         required: true
         content:
@@ -41,6 +42,10 @@ paths:
                   type: string
                   format: email
                   description: Email address (optional)
+                password: # <-- ADDED: Password for user creation (sign-up)
+                  type: string
+                  description: User's password (will be hashed)
+                  example: 'securepassword123'
                 ghanaCardImage:
                   type: string
                   format: binary
@@ -49,6 +54,7 @@ paths:
                 - name
                 - mobile
                 - gender
+                - password # <-- Added password to required fields
                 - ghanaCardImage
       responses:
         '201':
@@ -58,13 +64,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: Ghana Card image is required
+          description: Ghana Card image and/or password is required
         '500':
           description: Server error
     get:
       summary: Get all users
-      tags:
-        - Users
+      tags: [Users]
       responses:
         '200':
           description: A list of users
@@ -79,8 +84,7 @@ paths:
   /users/{id}:
     put:
       summary: Update a user by ID
-      tags:
-        - Users
+      tags: [Users]
       parameters:
         - in: path
           name: id
@@ -99,6 +103,10 @@ paths:
                 mobile: { type: string }
                 gender: { type: string, enum: ['Male', 'Female'] }
                 email: { type: string, format: email }
+                password: # <-- ADDED: Optional password update
+                  type: string
+                  description: New password (optional, will be hashed if provided)
+                  example: 'newsecurepassword'
                 ghanaCardImage: { type: string, format: binary, description: 'New image file (optional)' }
       responses:
         '200':
@@ -113,8 +121,7 @@ paths:
           description: Server error
     delete:
       summary: Delete a user by ID
-      tags:
-        - Users
+      tags: [Users]
       parameters:
         - in: path
           name: id
@@ -137,17 +144,78 @@ paths:
           description: User not found
         '500':
           description: Server error
+  /auth/login: # <-- NEW: Login Path and its details
+    post:
+      summary: User login
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mobile
+                - password
+              properties:
+                mobile:
+                  type: string
+                  description: User's mobile number
+                  example: '0241234567'
+                password:
+                  type: string
+                  description: User's password
+                  example: 'MySecurePassword123'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Login successful
+                  _id:
+                    type: string
+                    example: '65c3b1e3a4b5c6d7e8f9a0b1'
+                  name:
+                    type: string
+                    example: 'John Doe'
+                  mobile:
+                    type: string
+                    example: '0241234567'
+                  email:
+                    type: string
+                    example: 'john.doe@example.com'
+                  token:
+                    type: string
+                    description: JWT authentication token
+        '401':
+          description: Invalid mobile or password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid mobile or password
+        '500':
+          description: Server error
 components:
   schemas:
     User:
       type: object
-      required: ['name', 'mobile', 'gender', 'ghanaCardImage']
+      required: ['name', 'mobile', 'gender', 'password', 'ghanaCardImage'] # <-- Added password to required
       properties:
         _id: { type: 'string', description: 'MongoDB ObjectId' }
         name: { type: 'string', description: 'Name of the user' }
         mobile: { type: 'string', description: 'Mobile number of the user' }
         gender: { type: 'string', enum: ['Male', 'Female'], description: 'Gender of the user' }
         email: { type: 'string', format: 'email', description: 'Email address of the user (optional)' }
+        password: { type: 'string', description: 'Hashed password' } # <-- Added password property
         ghanaCardImage: { type: 'string', description: 'Path to the Ghana Card image' }
         createdAt: { type: 'string', format: 'date-time' }
         updatedAt: { type: 'string', format: 'date-time' }
